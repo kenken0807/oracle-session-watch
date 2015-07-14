@@ -1,0 +1,21 @@
+#Identification name:
+#	host:oracle hostname
+#	port:port
+#	db_name:sid
+#	db_user:user name that has select v$session
+#	db_pass:password
+#	mysqltable:mysql table name if there is not table,the script creates  a new table
+test:
+        host: localhost
+        port: 1521
+        db_name: orcl
+        db_user: system
+        db_pass: d4FB93c609e9
+        mysqltable: test_sess
+#test2:
+#	host: oracletest2
+#	port: 1521
+#	db_name: ora
+#	db_user: system
+#	db_pass: yyyyyy
+#	mysqltable: test2_sess 
