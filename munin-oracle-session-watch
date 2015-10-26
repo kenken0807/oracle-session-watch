@@ -1,0 +1,119 @@
+#!/usr/bin/perl
+use strict;
+use utf8;
+use DBI;    
+use Data::Dumper;
+ 
+#change tbl_name=> 'table_name'
+#title dbname
+my $oracle_db='xxxx';
+
+#mysql connection
+my $MY_DB_CONF =
+    {host=> 'localhost',
+     port=> '3306',
+     db_name=>  'ora_session',
+     db_user=>  'root',
+     db_pass=>  'oraclesession',
+     db_file=>  '/data/ora_session/my.cnf',
+     tbl_name=> 'table_name',
+    };
+
+my $MYDBH;
+eval{ 
+	$MYDBH = My_connect_db();
+};
+if (exists $ARGV[0]) {
+	if ($ARGV[0] eq 'autoconf') {
+		if ($MYDBH){
+			print "yes\n";
+			exit 0;
+		}else{
+			print "no Unable to access Database $MY_DB_CONF->{db_name} on host localhost as user root.\nError returned was: ". $DBI::errstr;
+			exit 1;
+		}
+	}
+	if ($ARGV[0] eq "config") {
+		print "graph_title $oracle_db Oracle ActiveSession WaitClass Avg in 5Mins \n";
+                print "graph_args --base 1024 -l 0\n";
+                print "graph_vlabel Lock Counts\n";
+                print "graph_category $oracle_db\n";
+                print "graph_info This is 5mins Avg of Active Sessions\n";
+                print "graph_scale no\n";
+                print "ADM.label Administrative\n";
+                print "ADM.info Wait for DBA Commands ex.Index rebuild\n";
+                print "ADM.type GAUGE\n";
+                print "ADM.draw AREA\n";
+                print "APP.label Application\n";
+                print "APP.info Wait for User's App ex.TX row lock\n";
+                print "APP.type GAUGE\n";
+                print "APP.draw STACK\n";
+                print "CMT.label Commit\n";
+                print "CMT.info Wait for Commit ex.file sync\n";
+                print "CMT.type GAUGE\n";
+                print "CMT.draw STACK\n";
+                print "CNC.label Concurrency\n";
+                print "CNC.info Wait for DB resource ex.latch\n";
+                print "CNC.type GAUGE\n";
+                print "CNC.draw STACK\n";
+                print "CNF.label Configuration\n";
+                print "CNF.info Wait for To Get DB Resource ex.small log buffers\n";
+                print "CNF.type GAUGE\n";
+                print "CNF.draw STACK\n";
+                print "NET.label Network\n";
+                print "NET.info Wait for Network  ex.SQL*Net message from client\n";
+                print "NET.type GAUGE\n";
+                print "NET.draw STACK\n";
+                print "OHR.label Other\n";
+                print "OHR.info Other Wait ex.wait for EMON to spawn\n";
+                print "OHR.type GAUGE\n";
+                print "OHR.draw STACK\n";
+                print "SCH.label Scheduler\n";
+                print "SCH.info Wait for Scheduler\n";
+                print "SCH.type GAUGE\n";
+                print "SCH.draw STACK\n";
+                print "SIO.label System I/O\n";
+                print "SIO.info Wait for BackGround Processes ex.db file parallel write\n";
+                print "SIO.type GAUGE\n";
+                print "SIO.draw STACK\n";
+                print "UIO.label User I/O\n";
+                print "UIO.info Wait for User IO ex.db file sequential read\n";
+                print "UIO.type GAUGE\n";
+                print "UIO.draw STACK\n";
+                exit 0;
+	}
+}
+#QUERY
+my $sql=sprintf("select wait_class as TYPE,floor(avg(cnt)) as  CNT from (select snapshot_date,wait_class,count(*) as cnt from %s where snapshot_date > (now() - interval 5 minute) and  wait_class <> 'Idle' group by 1,2) t group by 1",$MY_DB_CONF->{tbl_name});
+my $sth =$MYDBH->prepare ($sql);
+$sth->execute();
+my($type,$cnt)=(0,0);
+my ($ADM,$APP,$CMT,$CNC,$CNF,$NET,$OHR,$SCH,$SIO,$UIO)=(0,0,0,0,0,0,0,0,0,0);
+while(($type,$cnt)= $sth->fetchrow ()) {
+	if($type eq "Administrative") {$ADM=$cnt};
+	if($type eq "Application")    {$APP=$cnt};
+	if($type eq "Commit")         {$CMT=$cnt};
+	if($type eq "Concurrency" )   {$CNC=$cnt};
+	if($type eq "Configuration" ) {$CNF=$cnt};
+	if($type eq "Network" )       {$NET=$cnt};
+	if($type eq "Other" )         {$OHR=$cnt};
+	if($type eq "Scheduler" )     {$SCH=$cnt};
+	if($type eq "System I/O" )    {$SIO=$cnt};
+	if($type eq "User I/O" )      {$UIO=$cnt};
+}
+print "ADM.value $ADM\n";
+print "APP.value $APP\n";
+print "CMT.value $CMT\n";
+print "CNC.value $CNC\n";
+print "CNF.value $CNF\n";
+print "NET.value $NET\n";
+print "OHR.value $OHR\n";
+print "SCH.value $SCH\n";
+print "SIO.value $SIO\n";
+print "UIO.value $UIO\n";
+#mysql connection
+sub My_connect_db {
+	my $db="DBI:mysql:$MY_DB_CONF->{db_name}:$MY_DB_CONF->{host};mysql_read_default_file=$MY_DB_CONF->{db_file}";
+	my $MYDBH=DBI->connect($db,$MY_DB_CONF->{db_user},$MY_DB_CONF->{db_pass}) or die DBI->errstr;
+	return $MYDBH;
+}
